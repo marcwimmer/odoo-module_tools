@@ -52,21 +52,3 @@ class MixinValidNow(models.AbstractModel):
                     [(f2, '<', d)],
                 ])
         raise Exception("not impl")
-
-class ComputeModel(models.AbstractModel):
-    _name = 'model.mixin'
-    model = fields.Char(string='Model')
-    model_id = fields.Many2one('ir.model', compute='compute_model', string='Model')
-
-    @api.depends('model')
-    def compute_model(self):
-        for self in self:
-            if self.model:
-                model_id = self.env['ir.model'].search([('model', '=', self.model)], limit=1)
-                self.model_id = model_id
-
-    @api.model
-    def default_get(self, fields):
-        res = super(ComputeModel, self).default_get(fields)
-        res['model'] = self._name
-        return res

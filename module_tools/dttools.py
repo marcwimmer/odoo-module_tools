@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import datetime
 import time
 from dateutil.parser import parse
@@ -69,6 +68,9 @@ def _get_date_ranges(start, end):
         'date_start': date_start,
         'date_end': date_end,
     }
+
+def reldate(*params, **kwparams):
+    return relativedelta(*params, **kwparams)
 
 def is_dst(_date):
     """
@@ -160,28 +162,31 @@ def date_type(d):
         elif len(str) == len("00.00.0000 00:00:00"):
             return 'datetime'
 
-    if isinstance(d, datetime.date):
+    # isinstance not working, datetime is subclass of date (or vice versa)
+    if type(d) == datetime.date:
         return 'date'
 
-    if isinstance(d, datetime.datetime):
+    if type(d) == datetime.datetime:
         return 'datetime'
 
 def str2date(string):
     if not string:
         return False
-    if isinstance(string, datetime.date):
+    # isinstance not working, datetime is subclass of date (or vice versa)
+    if type(string) == datetime.date:
         return string
-    if isinstance(string, datetime.datetime):
+    if type(string) == datetime.datetime:
         return string.date()
     return parse(string).date()
 
 def str2datetime(string):
     if not string:
         return False
-    if isinstance(string, datetime.datetime):
+    # isinstance not working, datetime is subclass of date (or vice versa)
+    if type(string) == datetime:
         return string
-    if isinstance(string, datetime.date):
-        return datetime(datetime.date.year, datetime.date.month, datetime.date.day, 0, 0, 0)
+    if type(string) == datetime.date:
+        return datetime(string.year, string.month, string.day, 0, 0, 0)
     return parse(string)
 
 def date2str(date):

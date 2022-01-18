@@ -9,8 +9,6 @@ from .logtools import *
 from .dbtools import *
 from .pdftools import *
 from .other import *
-from .action_window_tools import *
-
 
 class Tools(object):
 
@@ -40,12 +38,11 @@ class Tools(object):
 class Base(models.AbstractModel):
 
     _inherit = 'base'
-    _logger = logging.getLogger('odoo_default_logger')
-    tools = Tools()
 
-    def __init__(self, *args, **kwargs):
-        super(Base, self).__init__(*args, **kwargs)
-        self._logger = logging.getLogger('model.{}'.format(self._name))
+    def __getattribute__(self, name):
+        if name == '_logger':
+            return logging.getLogger('model.{}'.format(self._name))
+        return super(Base, self).__getattribute__(name)
 
     def add_todo_fields(self, *fields_array):
         # shortcut for odoo syntax

@@ -13,4 +13,3 @@ from .pdftools import *
 from .fieldstools import *
 from .tests import *
 from .modeldata import *
-from .action_window_tools import *
