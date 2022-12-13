@@ -11,10 +11,11 @@ class MixinValidNow(models.AbstractModel):
 
     class A(models.Model):
         valid_now = fields.Boolean(
-            computed='_get_validnow', string="Valid Now", 
+            computed='_compute_validnow', string="Valid Now", 
             search="_search_valid_now", store=False)
 
-        def _get_validnow(self):
+        @api.depends("date_start", "date_stop")
+        def _compute_validnow(self):
             for rec in self:
                 rec.valid_now = rec.mixin_valid_now_get(
                     self.date_start, self.date_stop)
