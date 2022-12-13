@@ -82,3 +82,35 @@ def merge_pdfs(list_of_filecontents=[], filepaths=[], return_b64=False):
     finally:
         for x in to_unlink:
             os.unlink(x)
+
+def stamp_pdfs(pdfs):
+    """
+    :params pdfs: iterable binary contents
+
+    """
+    from PyPDF2 import PdfFileReader, PdfFileWriter
+
+    def get_pdf_page_count(pdf):
+        return PdfFileReader(io.BytesIO(pdf), strict=False).getNumPages()
+
+    def get_greatest_page_count(pdfs):
+        return max([get_pdf_page_count(pdf) for pdf in pdfs])
+
+    writer = PdfFileWriter()
+    greatest_page_count = get_greatest_page_count(pdfs)
+    first_pdf_reader = PdfFileReader(io.BytesIO(pdfs.pop(0)), strict=False)
+    for page_index in range(0, greatest_page_count):
+        for pdf in pdfs:
+            pdf_reader = PdfFileReader(io.BytesIO(pdf), strict=False)
+            pdf_page_count = pdf_reader.getNumPages()
+            page = first_pdf_reader.getPage(page_index)
+            if page_index < pdf_page_count:
+                page_to_be_merged = pdf_reader.getPage(page_index)
+                page_to_be_merged.scaleTo(int(page.mediaBox.getWidth()), int(page.mediaBox.getHeight()))
+                page.mergePage(page_to_be_merged)
+            writer.addPage(page)
+    io_buffer = io.BytesIO()
+    writer.write(io_buffer)
+    merged_pdf = io_buffer.getvalue()
+    io_buffer.close()
+    return merged_pdf

@@ -24,8 +24,8 @@ class MixinValidNow(models.AbstractModel):
 
     def mixin_valid_now_get(self, d1, d2):
         now = datetime.utcnow().date()
-        if self.date_start or self.date_stop:
-            return self.tools.date_in_range(now, self.date_start, self.date_stop)
+        if d1 or d2:
+            return self.tools.date_in_range(now, d1, d2)
         else:
             return True
 

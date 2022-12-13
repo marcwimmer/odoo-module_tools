@@ -38,14 +38,13 @@ class Tools(object):
         raise UserError("Error converting {}".format(date))
 
 class Base(models.AbstractModel):
-
     _inherit = 'base'
-    _logger = logging.getLogger('odoo_default_logger')
     tools = Tools()
-
-    def __init__(self, *args, **kwargs):
-        super(Base, self).__init__(*args, **kwargs)
-        self._logger = logging.getLogger('model.{}'.format(self._name))
+    
+    @classmethod
+    def _build_model_attributes(cls, pool):
+        super()._build_model_attributes(pool)
+        cls._logger = logging.getLogger('model.{}'.format(cls._name))
 
     def add_todo_fields(self, *fields_array):
         # shortcut for odoo syntax
@@ -72,5 +71,3 @@ class Base(models.AbstractModel):
         model = self.env[self._name]
         self.add_todo_fields(*fields_array)
         model.recompute()
-
-    tools = Tools()
