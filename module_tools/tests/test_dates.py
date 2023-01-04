@@ -3,7 +3,6 @@ from odoo.tests.common import TransactionCase
 from datetime import date
 from ..dttools import str2datetime, date_range_overlap, remove_times
 
-
 class TestDates(TransactionCase):
     def test_dates(self):
         d = str2datetime("1980-04-04 23:23:23")
@@ -27,14 +26,16 @@ class TestDates(TransactionCase):
         )
 
     def test_remove_times(self):
-
         tz = "Europe/Berlin"
-        start = arrow.get("1980-04-04 08:00:00").replace(tzinfo="utc")
-        end = arrow.get("1980-04-04 10:00:00").replace(tzinfo="utc")
+        start = arrow.get("1980-04-04 08:00:00").replace(tzinfo="utc").datetime
+        end = arrow.get("1980-04-04 10:00:00").replace(tzinfo="utc").datetime
         break_start = 9.5
         break_end = 10
-        break_timezone = "Europe/Berlin"
+        break_timezone = tz
 
         self.assertEqual(
-            _remove_times(start, end, [(break_start, break_end, break_timezone)]), 90
+            remove_times(start, end, [(4, break_start, break_end, break_timezone)]), 90
+        )
+        self.assertEqual(
+            remove_times(start, end, [(3, break_start, break_end, break_timezone)]), 120
         )

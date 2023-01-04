@@ -217,6 +217,8 @@ def date_type(d):
 def str2date(string):
     if not string:
         return False
+    if isinstance(string, arrow.arrow.Arrow):
+        return string.date()
     if isinstance(string, datetime.date):
         return string
     if isinstance(string, datetime.datetime):
@@ -227,6 +229,8 @@ def str2date(string):
 def str2datetime(string):
     if not string:
         return False
+    if isinstance(string, arrow.arrow.Arrow):
+        return string.datetime
     if isinstance(string, datetime.datetime):
         return string
     if isinstance(string, datetime.date):
@@ -366,6 +370,26 @@ def date_range_overlap(date_range1, date_range2):
     return False
 
 
+def clean_milliseconds(date):
+    date = str2datetime(date)
+    return arrow.get(int(str(arrow.get(date).float_timestamp).split(".")[0]))
+
+
+def slice_range(start, end, interval):
+    """ """
+    start = arrow.get(start)
+    end = arrow.get(end)
+    start = clean_milliseconds(start)
+    end = clean_milliseconds(end)
+
+    i = start
+    res = set()
+    while i < end:
+        res.add(i.datetime)
+        i = i.shift(**{interval: 1})
+    return res
+
+
 def remove_times(start, end, times):
     """
     times: array of (float start, float end, timezone)
@@ -380,28 +404,23 @@ def remove_times(start, end, times):
     assert str(start.tzinfo) == "tzutc()"
     assert str(end.tzinfo) == "tzutc()"
 
-    start = arrow.get(start.strftime("%Y-%m-%d %H:%M:%S")).replace(tzinfo="utc")
-    end = arrow.get(end.strftime("%Y-%m-%d %H:%M:%S")).replace(tzinfo="utc")
-
-    minutes = set()
-    days = set()
-    i = start
-    while i < end:
-        minutes.add(i)
-        days.add(arrow.get(i.strftime("%Y-%m-%d")))
-        i = i.shift(minutes=1)
+    minutes = slice_range(start, end, "minutes")
+    days = slice_range(
+        str2date(start), arrow.get(str2date(end)).shift(days=1).date(), "days"
+    )
 
     breakintervals = set()
     for day in days:
         for b in times:
-            b1 = day.shift(hours=b[0]).replace(tzinfo=b[2])
-            b2 = day.shift(hours=b[1]).replace(tzinfo=b[2])
-            b1 = b1.to("utc")
-            b2 = b2.to("utc")
-            i = b1
-            while i < b2:
-                breakintervals.add(i)
-                i = i.shift(minutes=1)
+            if b[0] != day.weekday():
+                continue
+            b1 = (
+                arrow.get(day).shift(hours=b[0]).replace(tzinfo=b[3]).to("utc").datetime
+            )
+            b2 = (
+                arrow.get(day).shift(hours=b[1]).replace(tzinfo=b[3]).to("utc").datetime
+            )
+            breakintervals |= slice_range(b1, b2, "minutes")
 
     minutes_count = len(minutes - breakintervals)
     return minutes_count
