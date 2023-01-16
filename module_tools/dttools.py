@@ -416,7 +416,6 @@ def remove_times(start, end, times, filters=None):
         for b in times:
             if b[0] != day.weekday():
                 continue
-            breakpoint()
             b1 = (
                 arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[1]).to("utc").datetime
             )
