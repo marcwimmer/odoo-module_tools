@@ -390,9 +390,11 @@ def slice_range(start, end, interval):
     return res
 
 
-def remove_times(start, end, times):
+def remove_times(start, end, times, filters=None):
     """
     times: array of (float start, float end, timezone)
+    filters: array of start end tuples; only times within these ranges are taken into account
+             (equivalent to working hours from to)
     """
     if end < start:
         raise ValidationError(f"End<Start {start =} {end = }")
@@ -421,6 +423,18 @@ def remove_times(start, end, times):
                 arrow.get(day).shift(hours=b[1]).replace(tzinfo=b[3]).to("utc").datetime
             )
             breakintervals |= slice_range(b1, b2, "minutes")
+
+    def _get_filtered(minutes):
+        if not filters:
+            yield from minutes
+        else:
+            for minute in minutes:
+                for filter in filters:
+                    filter = slice_range(filter[0], filter[1], "minutes")
+                    if minute in filter:
+                        yield minute
+
+    minutes = set(_get_filtered(minutes))
 
     minutes_count = len(minutes - breakintervals)
     return minutes_count
