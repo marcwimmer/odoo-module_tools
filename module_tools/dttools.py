@@ -416,11 +416,12 @@ def remove_times(start, end, times, filters=None):
         for b in times:
             if b[0] != day.weekday():
                 continue
+            breakpoint()
             b1 = (
-                arrow.get(day).shift(hours=b[0]).replace(tzinfo=b[3]).to("utc").datetime
+                arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[1]).to("utc").datetime
             )
             b2 = (
-                arrow.get(day).shift(hours=b[1]).replace(tzinfo=b[3]).to("utc").datetime
+                arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[2]).replace(tzinfo=b[3]).to("utc").datetime
             )
             breakintervals |= slice_range(b1, b2, "minutes")
 
