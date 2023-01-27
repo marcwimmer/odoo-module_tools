@@ -459,13 +459,17 @@ def slices_to_intervals(slices, detect_leap_seconds=60):
             current_interval[0] = slices[i]
 
         if i == len(slices) - 1:
-            current_interval[1] = slices[i]
+            current_interval[1] = (
+                arrow.get(slices[i]).shift(seconds=detect_leap_seconds).datetime
+            )
             yield current_interval
             break
 
         diff = (slices[i + 1] - slices[i]).total_seconds()
         if diff > detect_leap_seconds:
-            current_interval[1] = slices[i]
+            current_interval[1] = (
+                arrow.get(slices[i]).shift(seconds=detect_leap_seconds).datetime
+            )
             yield current_interval
             current_interval = [None, None]
 
