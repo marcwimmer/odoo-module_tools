@@ -438,3 +438,45 @@ def remove_times(start, end, times, filters=None):
 
     minutes_count = len(minutes - breakintervals)
     return minutes_count
+
+def slices_to_intervals(slices, detect_leap_seconds=60):
+    """
+    Puts slices into intervals
+    """
+
+    result = []
+
+    current_interval = [None, None]
+    slices = list(sorted(slices))
+    for i in range(len(slices)):
+        if current_interval[0] is None:
+            current_interval[0] = slices[i]
+
+        if i == len(slices) - 1:
+            current_interval[1] = slices[i]
+            yield current_interval
+            break
+
+        diff = (slices[i + 1] - slices[i]).total_seconds()
+        if diff > detect_leap_seconds:
+            current_interval[1] = slices[i]
+            yield current_interval
+            current_interval = [None, None]
+
+def remove_range(interval, range):
+    """
+
+    interval: 08:00 - 12:00 range 09:00 - 10:00    
+
+    returns:
+    08:00 - 08:59:59
+    10:00 - 12:00
+    """
+
+    if not date_range_overlap(interval, range):
+        return interval
+    interval_sliced = slice_range(interval[0], interval[1], "minutes")
+    range_sliced = slice_range(range[0], range[1], "minutes")
+    valid = interval_sliced - range_sliced
+    intervals = list(slices_to_intervals(valid, detect_leap_seconds=60))
+    return intervals
