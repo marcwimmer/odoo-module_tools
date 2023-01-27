@@ -420,7 +420,12 @@ def remove_times(start, end, times, filters=None):
                 arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[1]).to("utc").datetime
             )
             b2 = (
-                arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[2]).replace(tzinfo=b[3]).to("utc").datetime
+                arrow.get(day)
+                .replace(tzinfo=b[3])
+                .shift(hours=b[2])
+                .replace(tzinfo=b[3])
+                .to("utc")
+                .datetime
             )
             breakintervals |= slice_range(b1, b2, "minutes")
 
@@ -438,6 +443,7 @@ def remove_times(start, end, times, filters=None):
 
     minutes_count = len(minutes - breakintervals)
     return minutes_count
+
 
 def slices_to_intervals(slices, detect_leap_seconds=60):
     """
@@ -463,20 +469,45 @@ def slices_to_intervals(slices, detect_leap_seconds=60):
             yield current_interval
             current_interval = [None, None]
 
+
 def remove_range(interval, range):
     """
 
-    interval: 08:00 - 12:00 range 09:00 - 10:00    
+    interval: 08:00 - 12:00 range 09:00 - 10:00
 
     returns:
     08:00 - 08:59:59
     10:00 - 12:00
     """
 
-    if not date_range_overlap(interval, range):
+    i1 = str2datetime(interval[0])
+    i2 = str2datetime(interval[1])
+    r1 = str2datetime(range[0])
+    r2 = str2datetime(range[1])
+    I = (i1, i2)
+    R = (r1, r2)
+    tz = i1.tzinfo
+
+    assert (
+        arrow.get(i1).tzinfo
+        == arrow.get(i2).tzinfo
+        == arrow.get(r1).tzinfo
+        == arrow.get(r2).tzinfo
+    )
+
+    if not date_range_overlap(I, R):
         return interval
-    interval_sliced = slice_range(interval[0], interval[1], "minutes")
-    range_sliced = slice_range(range[0], range[1], "minutes")
+    interval_sliced = slice_range(*I, "minutes")
+    range_sliced = slice_range(*R, "minutes")
     valid = interval_sliced - range_sliced
     intervals = list(slices_to_intervals(valid, detect_leap_seconds=60))
+    intervals = list(
+        map(
+            lambda x: (
+                arrow.get(x[0]).to(tz).datetime,
+                arrow.get(x[1]).to(tz).datetime,
+            ),
+            intervals,
+        )
+    )
     return intervals
