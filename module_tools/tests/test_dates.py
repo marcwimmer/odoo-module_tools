@@ -1,6 +1,6 @@
 import arrow
 from odoo.tests.common import TransactionCase
-from datetime import date
+from datetime import date, datetime
 from ..dttools import str2datetime, date_range_overlap, remove_times, remove_range
 
 
@@ -66,12 +66,20 @@ class TestDates(TransactionCase):
             intervals[0][0].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 08:00:00"
         )
         self.assertEqual(
-            intervals[0][1].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 08:59:00"
+            intervals[0][1].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 09:00:00"
         )
 
         self.assertEqual(
             intervals[1][0].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 10:00:00"
         )
         self.assertEqual(
-            intervals[1][1].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 10:59:00"
+            intervals[1][1].strftime("%Y-%m-%d %H:%M:%S"), "1980-04-04 11:00:00"
         )
+
+        # another range
+        d1 = arrow.get(datetime(2023, 1,30, 7, 0)).replace(tzinfo=tz).datetime
+        d2 = arrow.get(datetime(2023, 1,30, 9, 0)).replace(tzinfo=tz).datetime
+        p1 = arrow.get(datetime(2023, 1,30, 9, 0)).replace(tzinfo=tz).datetime
+        p2 = arrow.get(datetime(2023, 1,30, 9, 30)).replace(tzinfo=tz).datetime
+        intervals = remove_range((d1, d2), (p1, p2))
+        self.assertEqual(len(intervals), 1)
