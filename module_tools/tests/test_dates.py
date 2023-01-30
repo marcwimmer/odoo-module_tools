@@ -77,8 +77,8 @@ class TestDates(TransactionCase):
         )
 
         # another range
-        d1 = arrow.get(datetime(2023, 1,30, 7, 0)).replace(tzinfo=tz).datetime
-        d2 = arrow.get(datetime(2023, 1,30, 9, 0)).replace(tzinfo=tz).datetime
+        d1 = arrow.get(datetime(2023, 1,31, 7, 0)).replace(tzinfo=tz).datetime
+        d2 = arrow.get(datetime(2023, 1,31, 9, 0)).replace(tzinfo=tz).datetime
         p1 = arrow.get(datetime(2023, 1,30, 9, 0)).replace(tzinfo=tz).datetime
         p2 = arrow.get(datetime(2023, 1,30, 9, 30)).replace(tzinfo=tz).datetime
         intervals = remove_range((d1, d2), (p1, p2))

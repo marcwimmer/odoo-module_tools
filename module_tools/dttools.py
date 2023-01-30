@@ -500,7 +500,7 @@ def remove_range(interval, range):
     )
 
     if not date_range_overlap(I, R):
-        return interval
+        return [interval]
     interval_sliced = slice_range(*I, "minutes")
     range_sliced = slice_range(*R, "minutes")
     valid = interval_sliced - range_sliced
