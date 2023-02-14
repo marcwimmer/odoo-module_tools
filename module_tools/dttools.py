@@ -6,6 +6,7 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from pytz import timezone
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DT
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT
 
 
@@ -433,11 +434,17 @@ def remove_times(start, end, times, filters=None):
         if not filters:
             yield from minutes
         else:
+            all_filters = set()
+            [
+                all_filters.add(item)
+                for a_filter in list(
+                    map(lambda x: set(slice_range(x[0], x[1], "minutes")), filters)
+                )
+                for item in a_filter
+            ]
             for minute in minutes:
-                for filter in filters:
-                    filter = slice_range(filter[0], filter[1], "minutes")
-                    if minute in filter:
-                        yield minute
+                if minute in all_filters:
+                    yield minute
 
     minutes = set(_get_filtered(minutes))
 
@@ -515,3 +522,22 @@ def remove_range(interval, range):
         )
     )
     return intervals
+
+
+def iterate_dtrange(start, stop, interval="days", inc=1):
+    assert interval == 'days'
+
+    iterator = start
+    calc_start = start
+    calc_stop = stop
+    while iterator < stop:
+
+        if iterator.strftime(DT) == start.strftime(DT):
+            calc_start = start
+            calc_stop = calc_start.replace(hour=23, minute=59, second=59)
+        else:
+            calc_start = iterator.replace(hour=0, minute=0, second=0)
+            calc_stop = stop
+
+        yield calc_start, calc_stop
+        iterator = arrow.get(iterator).shift(**{interval: inc})
