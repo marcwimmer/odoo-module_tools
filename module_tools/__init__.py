@@ -12,6 +12,7 @@ from .makotools import *
 from .pdftools import *
 from .fieldstools import *
 from .modeldata import *
+from .jsontools import *
 from .action_window_tools import *
 
 from .tests import *
