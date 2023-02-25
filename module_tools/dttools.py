@@ -391,7 +391,7 @@ def slice_range(start, end, interval):
     return res
 
 
-def remove_times(start, end, times, filters=None):
+def remove_times(start, end, times, filters=None, negative_filters=None):
     """
     times: array of (float start, float end, timezone)
     filters: array of start end tuples; only times within these ranges are taken into account
@@ -408,13 +408,24 @@ def remove_times(start, end, times, filters=None):
     assert str(end.tzinfo) == "tzutc()"
 
     minutes = slice_range(start, end, "minutes")
-    days = slice_range(
-        str2date(start), arrow.get(str2date(end)).shift(days=1).date(), "days"
-    )
 
-    breakintervals = set()
-    for day in days:
-        for b in times:
+    for positive_filter in filters or []:
+        start, stop = tuple(map(arrow.get, positive_filter))
+        start = start.to("utc")
+        stop = stop.to("utc")
+        minutes = set(filter(lambda minute: minute >= start and minute <= stop, minutes))
+
+    for negative_filter in negative_filters or []:
+        start, stop = tuple(map(arrow.get, negative_filter))
+        start = start.to("utc")
+        stop = stop.to("utc")
+        minutes = set(filter(lambda minute: minute < start or minute > stop, minutes))
+
+    for I, b in enumerate(times):
+        tz = b[3]
+        days = set(map(lambda x: arrow.get(x).to(tz).date(), minutes))
+
+        for day in days:
             if b[0] != day.weekday():
                 continue
             b1 = (
@@ -428,27 +439,10 @@ def remove_times(start, end, times, filters=None):
                 .to("utc")
                 .datetime
             )
-            breakintervals |= slice_range(b1, b2, "minutes")
+            breakintervals = slice_range(b1, b2, "minutes")
+            minutes -= breakintervals
 
-    def _get_filtered(minutes):
-        if not filters:
-            yield from minutes
-        else:
-            all_filters = set()
-            [
-                all_filters.add(item)
-                for a_filter in list(
-                    map(lambda x: set(slice_range(x[0], x[1], "minutes")), filters)
-                )
-                for item in a_filter
-            ]
-            for minute in minutes:
-                if minute in all_filters:
-                    yield minute
-
-    minutes = set(_get_filtered(minutes))
-
-    minutes_count = len(minutes - breakintervals)
+    minutes_count = len(minutes)
     return minutes_count
 
 
@@ -525,7 +519,7 @@ def remove_range(interval, range):
 
 
 def iterate_dtrange(start, stop, interval="days", inc=1):
-    assert interval == 'days'
+    assert interval == "days"
 
     iterator = start
     calc_start = start
