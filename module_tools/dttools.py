@@ -417,7 +417,9 @@ def remove_times(start, end, times, filters=None, negative_filters=None):
         start, stop = tuple(map(arrow.get, positive_filter))
         start = start.to("utc")
         stop = stop.to("utc")
-        minutes = set(filter(lambda minute: minute >= start and minute <= stop, minutes))
+        minutes = set(
+            filter(lambda minute: minute >= start and minute <= stop, minutes)
+        )
 
     for negative_filter in negative_filters or []:
         start, stop = tuple(map(arrow.get, negative_filter))
@@ -529,7 +531,6 @@ def iterate_dtrange(start, stop, interval="days", inc=1):
     calc_start = start
     calc_stop = stop
     while iterator < stop:
-
         if iterator.strftime(DT) == start.strftime(DT):
             calc_start = start
             calc_stop = calc_start.replace(hour=23, minute=59, second=59)
@@ -540,8 +541,10 @@ def iterate_dtrange(start, stop, interval="days", inc=1):
         yield calc_start, calc_stop
         iterator = arrow.get(iterator).shift(**{interval: inc})
 
-def _inc_business_days(self, start, busdays, step={'days': -1}):
+
+def _inc_business_days(self, start, busdays, step={"days": -1}):
     import numpy as np
+
     s = start.strftime(DTF)
     start = fields.Date.from_string(s[:10])
     offset = start
