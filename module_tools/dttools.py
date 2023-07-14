@@ -1,10 +1,16 @@
-# -*- encoding: utf-8 -*-
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DT
+import arrow
 import datetime
 import time
+from odoo.exceptions import ValidationError
+from odoo import fields
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
+from datetime import timedelta
 from pytz import timezone
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DT
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT
 
 
@@ -216,6 +222,8 @@ def date_type(d):
 def str2date(string):
     if not string:
         return False
+    if isinstance(string, arrow.arrow.Arrow):
+        return string.date()
     if isinstance(string, datetime.date):
         return string
     if isinstance(string, datetime.datetime):
@@ -226,6 +234,8 @@ def str2date(string):
 def str2datetime(string):
     if not string:
         return False
+    if isinstance(string, arrow.arrow.Arrow):
+        return string.datetime
     if isinstance(string, datetime.datetime):
         return string
     if isinstance(string, datetime.date):
@@ -365,25 +375,179 @@ def date_range_overlap(date_range1, date_range2):
     return False
 
 
-if __name__ == "__main__":
-    from datetime import date
+def clean_milliseconds(date):
+    date = str2datetime(date)
+    return arrow.get(int(str(arrow.get(date).float_timestamp).split(".")[0]))
 
-    d = str2datetime("1980-04-04 23:23:23")
-    assert date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 5), date(2013, 4, 6))
+
+def slice_range(start, end, interval):
+    """ """
+    start = arrow.get(start)
+    end = arrow.get(end)
+    start = clean_milliseconds(start)
+    end = clean_milliseconds(end)
+
+    i = start
+    res = set()
+    while i < end:
+        res.add(i.datetime)
+        i = i.shift(**{interval: 1})
+    return res
+
+
+def remove_times(start, end, times, filters=None, negative_filters=None):
+    """
+    times: array of (float start, float end, timezone)
+    filters: array of start end tuples; only times within these ranges are taken into account
+             (equivalent to working hours from to)
+    """
+    if end < start:
+        raise ValidationError(f"End<Start {start =} {end = }")
+
+    # expects timezone UTC of start and end or naive
+
+    start = arrow.get(start)
+    end = arrow.get(end)
+    assert str(start.tzinfo) == "tzutc()"
+    assert str(end.tzinfo) == "tzutc()"
+
+    minutes = slice_range(start, end, "minutes")
+
+    for positive_filter in filters or []:
+        start, stop = tuple(map(arrow.get, positive_filter))
+        start = start.to("utc")
+        stop = stop.to("utc")
+        minutes = set(
+            filter(lambda minute: minute >= start and minute <= stop, minutes)
+        )
+
+    for negative_filter in negative_filters or []:
+        start, stop = tuple(map(arrow.get, negative_filter))
+        start = start.to("utc")
+        stop = stop.to("utc")
+        minutes = set(filter(lambda minute: minute < start or minute > stop, minutes))
+
+    for I, b in enumerate(times):
+        tz = b[3]
+        days = set(map(lambda x: arrow.get(x).to(tz).date(), minutes))
+
+        for day in days:
+            if b[0] != day.weekday():
+                continue
+            b1 = (
+                arrow.get(day).replace(tzinfo=b[3]).shift(hours=b[1]).to("utc").datetime
+            )
+            b2 = (
+                arrow.get(day)
+                .replace(tzinfo=b[3])
+                .shift(hours=b[2])
+                .replace(tzinfo=b[3])
+                .to("utc")
+                .datetime
+            )
+            breakintervals = slice_range(b1, b2, "minutes")
+            minutes -= breakintervals
+
+    minutes_count = len(minutes)
+    return minutes_count
+
+
+def slices_to_intervals(slices, detect_leap_seconds=60):
+    """
+    Puts slices into intervals
+    """
+
+    result = []
+
+    current_interval = [None, None]
+    slices = list(sorted(slices))
+    for i in range(len(slices)):
+        if current_interval[0] is None:
+            current_interval[0] = slices[i]
+
+        if i == len(slices) - 1:
+            current_interval[1] = (
+                arrow.get(slices[i]).shift(seconds=detect_leap_seconds).datetime
+            )
+            yield current_interval
+            break
+
+        diff = (slices[i + 1] - slices[i]).total_seconds()
+        if diff > detect_leap_seconds:
+            current_interval[1] = (
+                arrow.get(slices[i]).shift(seconds=detect_leap_seconds).datetime
+            )
+            yield current_interval
+            current_interval = [None, None]
+
+
+def remove_range(interval, range):
+    """
+
+    interval: 08:00 - 12:00 range 09:00 - 10:00
+
+    returns:
+    08:00 - 08:59:59
+    10:00 - 12:00
+    """
+
+    i1 = str2datetime(interval[0])
+    i2 = str2datetime(interval[1])
+    r1 = str2datetime(range[0])
+    r2 = str2datetime(range[1])
+    I = (i1, i2)
+    R = (r1, r2)
+    tz = i1.tzinfo
+
+    assert (
+        arrow.get(i1).tzinfo
+        == arrow.get(i2).tzinfo
+        == arrow.get(r1).tzinfo
+        == arrow.get(r2).tzinfo
     )
-    assert date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 2), date(2013, 4, 12))
+
+    if not date_range_overlap(I, R):
+        return [interval]
+    interval_sliced = slice_range(*I, "minutes")
+    range_sliced = slice_range(*R, "minutes")
+    valid = interval_sliced - range_sliced
+    intervals = list(slices_to_intervals(valid, detect_leap_seconds=60))
+    intervals = list(
+        map(
+            lambda x: (
+                arrow.get(x[0]).to(tz).datetime,
+                arrow.get(x[1]).to(tz).datetime,
+            ),
+            intervals,
+        )
     )
-    assert date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 9), date(2013, 4, 12))
-    )
-    assert not date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 2), date(2013, 4, 3))
-    )
-    assert date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 2), date(2013, 4, 4))
-    )
-    assert date_range_overlap(
-        (date(2013, 4, 4), date(2013, 4, 10)), (date(2013, 4, 2), date(2013, 4, 5))
-    )
+    return intervals
+
+
+def iterate_dtrange(start, stop, interval="days", inc=1):
+    assert interval == "days"
+
+    iterator = start
+    calc_start = start
+    calc_stop = stop
+    while iterator < stop:
+        if iterator.strftime(DT) == start.strftime(DT):
+            calc_start = start
+            calc_stop = calc_start.replace(hour=23, minute=59, second=59)
+        else:
+            calc_start = iterator.replace(hour=0, minute=0, second=0)
+            calc_stop = stop
+
+        yield calc_start, calc_stop
+        iterator = arrow.get(iterator).shift(**{interval: inc})
+
+
+def _inc_business_days(self, start, busdays, step={"days": -1}):
+    import numpy as np
+
+    s = start.strftime(DTF)
+    start = fields.Date.from_string(s[:10])
+    offset = start
+    while abs(np.busday_count(offset, start)) < busdays:
+        start = start + timedelta(**step)
+    return fields.Datetime.from_string(start.strftime(DT) + s[10:])
