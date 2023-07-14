@@ -541,6 +541,7 @@ def iterate_dtrange(start, stop, interval="days", inc=1):
         iterator = arrow.get(iterator).shift(**{interval: inc})
 
 def _inc_business_days(self, start, busdays, step={'days': -1}):
+    import numpy as np
     s = start.strftime(DTF)
     start = fields.Date.from_string(s[:10])
     offset = start
