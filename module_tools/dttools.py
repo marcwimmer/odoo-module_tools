@@ -1,9 +1,13 @@
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DT
 import arrow
 import datetime
 import time
 from odoo.exceptions import ValidationError
+from odoo import fields
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
+from datetime import timedelta
 from pytz import timezone
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DT
@@ -535,3 +539,11 @@ def iterate_dtrange(start, stop, interval="days", inc=1):
 
         yield calc_start, calc_stop
         iterator = arrow.get(iterator).shift(**{interval: inc})
+
+def _inc_business_days(self, start, busdays, step={'days': -1}):
+    s = start.strftime(DTF)
+    start = fields.Date.from_string(s[:10])
+    offset = start
+    while abs(np.busday_count(offset, start)) < busdays:
+        start = start + timedelta(**step)
+    return fields.Datetime.from_string(start.strftime(DT) + s[10:])
