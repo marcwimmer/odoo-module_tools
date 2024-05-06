@@ -321,8 +321,60 @@ def date_in_range(date, start, end):
 
     return date >= start and date <= end
 
+def datetime_in_range(date, start, end):
+    """
+    Checks wether date is between start and end;
+    start, end can be string or python date
+
+    if start is False, then start will be 01.01.1980
+    if end is False, then End will be 31.12.2100
+    """
+    if isinstance(start, (datetime.date, datetime.datetime)):
+        start = datetime2str(start)
+    if isinstance(end, (datetime.date, datetime.datetime)):
+        end = datetime2str(end)
+    if isinstance(date, (datetime.date, datetime.datetime)):
+        date = datetime2str(date)
+
+    if not date:
+        raise Exception("date is not given - cannot determine range")
+
+    if not start:
+        start = "1980-01-01"
+    if not end:
+        end = "2100-12-31"
+
+    return date >= start and date <= end
+
+def todatetime(d):
+    if isinstance(d, (datetime.datetime,)):
+        return d
+    if isinstance(d, str):
+        return str2datetime(d)
+    raise NotImplementedError(d)
+
+
+def todate(d):
+    if isinstance(d, (datetime.date,)):
+        return d
+    if isinstance(d, str):
+        return str2date(d)
+    raise NotImplementedError(d)
+
 
 def date_range_overlap(date_range1, date_range2):
+    date_range1 = list(map(date2str, date_range1))
+    date_range2 = list(map(date2str, date_range2))
+    return _date_range_overlap(date_range1, date_range2)
+
+
+def datetime_range_overlap(date_range1, date_range2):
+    date_range1 = list(map(datetime2str, date_range1))
+    date_range2 = list(map(datetime2str, date_range2))
+    return _date_range_overlap(date_range1, date_range2)
+
+
+def _date_range_overlap(date_range1, date_range2):
     """
     Prueft, ob sich die angegebenen Datumsbereiche ueberschneiden
 
@@ -336,15 +388,6 @@ def date_range_overlap(date_range1, date_range2):
 
     assert all([isinstance(x, (list, tuple)) for x in [d1, d2]])
     assert all([len(x) == 2 for x in [d1, d2]])
-
-    # convert all to strings
-    def c(x):
-        if isinstance(x, (datetime.datetime, datetime.date)):
-            x = date2str(x)
-        return x
-
-    d1 = [c(x) for x in d1]
-    d2 = [c(x) for x in d2]
 
     MIN = "1980-01-01"
     MAX = "2100-01-01"
