@@ -13,6 +13,7 @@ from .pdftools import *
 from .fieldstools import *
 from .modeldata import *
 from .jsontools import *
+from .floattools import *
 from .action_window_tools import *
 
 from .tests import *
