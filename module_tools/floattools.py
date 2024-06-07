@@ -2,7 +2,7 @@ from odoo.tools import float_round
 from decimal import Decimal
 
 
-def float_is_same(f1, f2, precision_rounding=None):
+def float_is_same(f1, f2, precision_rounding=None, tolerance=None):
     f = list(map(Decimal, [f1, f2]))
     if precision_rounding:
         digits = len(str(Decimal(str(precision_rounding))).split(".")[1])
@@ -20,4 +20,10 @@ def float_is_same(f1, f2, precision_rounding=None):
     lens = list(map(get_len, s))
     minlen = min(lens)
     f = list(map(round_to_len, f))
-    return f[0] == f[1]
+    if f[0] == f[1]:
+        return True
+    if not tolerance:
+        return False
+    diff = abs(f[0] - f[1])
+    return diff < tolerance
+
